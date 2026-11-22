@@ -1,0 +1,83 @@
+{
+ "date": "2026-11-20",
+ "title": "All-In Podcast 11/20 重點",
+ "topic": "範例：All-In Podcast 11 月 20 日",
+ "sources": [
+  {
+   "name": "All-In Podcast",
+   "url": "https://www.youtube.com/watch?v=G5w7EyF-aFQ"
+  }
+ ],
+ "slides": [
+  {
+   "head": "開場",
+   "lines": [
+    {
+     "show": "這是 All-In Podcast 11 月 20 日這一集",
+     "en": "This is the November 20 episode of the All-In Podcast",
+     "say": "這是 All-In Podcast 十一月二十日這一集"
+    },
+    {
+     "show": "主持人是 Chamath、Jason 和 Friedberg",
+     "en": "hosted by Chamath, Jason and Friedberg",
+     "say": "主持人是 Chamath、Jason 和 Friedberg"
+    },
+    {
+     "show": "Chamath 說的那筆交易，是資安公司 Palo Alto Networks",
+     "en": "The deal he mentioned: security firm Palo Alto Networks",
+     "say": "Chamath 說的那筆交易，是資安公司 Palo Alto Networks"
+    },
+    {
+     "show": "用 45 億美元的股票，買下開源模型新創 Applied Compute",
+     "en": "paid $4.5 billion in stock for open-model startup Applied Compute",
+     "say": "用四十五億美元的股票，買下開源模型新創 Applied Compute"
+    },
+    {
+     "show": "消息和優於預期的財報同時公布，股價大漲",
+     "en": "The news came with a strong earnings beat, and the stock jumped",
+     "say": "消息和優於預期的財報同時公布，股價大漲"
+    },
+    {
+     "show": "Chamath 認為，市場在獎勵敢跨出本業的公司",
+     "en": "Chamath says the market is rewarding companies that step outside their lane",
+     "say": "Chamath 認為，市場在獎勵敢跨出本業的公司"
+    }
+   ]
+  },
+  {
+   "head": "交易背後",
+   "lines": [
+    {
+     "show": "他接著談到輝達：營收翻倍，股價卻一路下跌",
+     "en": "He then turned to Nvidia: revenue doubled, yet the stock kept falling",
+     "say": "他接著談到輝達：營收翻倍，股價卻一路下跌"
+    }
+   ]
+  },
+  {
+   "head": "重點一",
+   "lines": [
+    {
+     "show": "節目錄製前一天，Anthropic 正式上市",
+     "en": "The day before recording, Anthropic went public",
+     "say": "節目錄製前一天，Anthropic 正式上市"
+    },
+    {
+     "show": "每股 83 美元，首日收在 97.17 美元",
+     "en": "Priced at $83, it closed its first day at $97.17",
+     "say": "每股八十三美元，首日收在九十七點一七美元"
+    },
+    {
+     "show": "募資 813 億美元，是史上最大的 IPO",
+     "en": "raising $81.3 billion, the largest IPO ever",
+     "say": "募資八百一十三億美元，是史上最大的 IPO"
+    },
+    {
+     "show": "Jason 請 Friedberg 談談這家公司",
+     "en": "Jason asked Friedberg for his take on the company",
+     "say": "Jason 請 Friedberg 談談這家公司"
+    }
+   ]
+  }
+ ]
+}

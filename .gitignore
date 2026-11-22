@@ -1,0 +1,5 @@
+days/*/tts/
+days/*/segs/
+days/*/frames/
+days/*/video.mp4
+__pycache__/
