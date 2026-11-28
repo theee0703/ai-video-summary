@@ -3,7 +3,7 @@
 ROOT="$HOME/claude-ai-video-summary"; D="$ROOT/daily"; W="$HOME/.video-worker"; V="$W/venv-daily"; PY="$V/bin/python"
 export PATH="$HOME/.deno/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 TODAY=$(date +%F)
-[ -f "$D/days/$TODAY/DONE" ] && exit 0
+if [ -f "$D/days/$TODAY/DONE" ] && [[ " $* " != *" --extra "* ]]; then exit 0; fi
 LOCK="$W/daily.lock"
 if [ -d "$LOCK" ] && [ -n "$(find "$LOCK" -maxdepth 0 -mmin +300 2>/dev/null)" ]; then rmdir "$LOCK"; fi
 mkdir "$LOCK" 2>/dev/null || exit 0

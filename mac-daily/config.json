@@ -1,22 +1,63 @@
 {
- "說明": "頻道清單可以自己增減；min_minutes＝只挑超過幾分鐘的影片；max_age_days＝優先挑幾天內的新片，找不到再放寬到 fallback_age_days。",
+ "說明": "頻道清單可以自己增減；min_minutes＝只挑超過幾分鐘的影片；max_age_days＝優先挑幾天內的新片，找不到再放寬到 fallback_age_days。 preferences＝選片偏好順序；不在清單的頻道需訂閱數 ≥ min_followers_unlisted 才會考慮，30 天內被選中 2 次會自動加入清單。",
  "channels": [
-  {"name": "All-In Podcast", "url": "https://www.youtube.com/@allin/videos"},
-  {"name": "Dwarkesh Podcast", "url": "https://www.youtube.com/@DwarkeshPatel/videos"},
-  {"name": "BG2 Pod", "url": "https://www.youtube.com/@Bg2Pod/videos"},
-  {"name": "No Priors", "url": "https://www.youtube.com/@NoPriorsPodcast/videos"},
-  {"name": "Latent Space", "url": "https://www.youtube.com/@LatentSpacePod/videos"},
-  {"name": "Lex Fridman", "url": "https://www.youtube.com/@lexfridman/videos"},
-  {"name": "Acquired", "url": "https://www.youtube.com/@AcquiredFM/videos"},
-  {"name": "a16z", "url": "https://www.youtube.com/@a16z/videos"},
-  {"name": "Sequoia Capital", "url": "https://www.youtube.com/@sequoiacapital/videos"},
-  {"name": "20VC", "url": "https://www.youtube.com/@20VC/videos"},
-  {"name": "Moonshots", "url": "https://www.youtube.com/@peterdiamandis/videos"}
+  {
+   "name": "All-In Podcast",
+   "url": "https://www.youtube.com/@allin/videos"
+  },
+  {
+   "name": "Dwarkesh Podcast",
+   "url": "https://www.youtube.com/@DwarkeshPatel/videos"
+  },
+  {
+   "name": "BG2 Pod",
+   "url": "https://www.youtube.com/@Bg2Pod/videos"
+  },
+  {
+   "name": "No Priors",
+   "url": "https://www.youtube.com/@NoPriorsPodcast/videos"
+  },
+  {
+   "name": "Latent Space",
+   "url": "https://www.youtube.com/@LatentSpacePod/videos"
+  },
+  {
+   "name": "Lex Fridman",
+   "url": "https://www.youtube.com/@lexfridman/videos"
+  },
+  {
+   "name": "Acquired",
+   "url": "https://www.youtube.com/@AcquiredFM/videos"
+  },
+  {
+   "name": "a16z",
+   "url": "https://www.youtube.com/@a16z/videos"
+  },
+  {
+   "name": "Sequoia Capital",
+   "url": "https://www.youtube.com/@sequoiacapital/videos"
+  },
+  {
+   "name": "20VC",
+   "url": "https://www.youtube.com/@20VC/videos"
+  },
+  {
+   "name": "Moonshots",
+   "url": "https://www.youtube.com/@peterdiamandis/videos"
+  }
  ],
  "min_minutes": 35,
  "max_age_days": 4,
  "fallback_age_days": 10,
  "target_minutes": "12～15",
  "copy_to": "~/Library/Mobile Documents/com~apple~CloudDocs/AI晶片日報",
- "keep_sources_days": 7
+ "keep_sources_days": 7,
+ "preferences": "1 晶片與資料中心硬體（GPU、TPU、先進製程、封裝、電力與散熱）；2 AI 公司策略與產業版圖；3 AI 研究突破與模型能力；4 投資與市場",
+ "min_followers_unlisted": 50000,
+ "news_queries": [
+  "AI chips",
+  "Nvidia OR TSMC OR semiconductor",
+  "OpenAI OR Anthropic OR \"Google Gemini\"",
+  "AI data center"
+ ]
 }

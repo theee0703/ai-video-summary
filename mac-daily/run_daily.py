@@ -60,34 +60,78 @@ def has_en_subs(m):
     return any(k == "en" or k.startswith("en-") for k in keys)
 
 
+NEWS_QUERIES = ["AI chips", "Nvidia OR TSMC OR semiconductor", "OpenAI OR Anthropic OR \"Google Gemini\"", "AI data center"]
+
+
+def news_headlines():
+    """Google 新聞 RSS：最近 3 天 AI／晶片的頭條，用來判斷這幾天什麼最重要。"""
+    import urllib.request, urllib.parse, xml.etree.ElementTree as ET
+    out = []
+    for q in CFG.get("news_queries", NEWS_QUERIES):
+        url = "https://news.google.com/rss/search?" + urllib.parse.urlencode({"q": q + " when:3d", "hl": "en-US", "gl": "US", "ceid": "US:en"})
+        try:
+            xml = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read()
+            for it in list(ET.fromstring(xml).iter("item"))[:15]:
+                out.append(it.findtext("title", ""))
+        except Exception as e:
+            log("  新聞讀取失敗：", q, type(e).__name__)
+    return list(dict.fromkeys(out))[:60]
+
+
+def flat_list(url, n):
+    r = ytdlp("--flat-playlist", "-J", "--playlist-end", str(n), url, timeout=300)
+    return (json.loads(r.stdout).get("entries") or []) if r.returncode == 0 else None
+
+
 def step_pick(DAY, forced):
     p = f"{DAY}/pick.json"
     if os.path.exists(p):
         return jload(p)
-    hist = {h["id"] for h in jload(f"{D}/history.json", [])}
+    history = jload(f"{D}/history.json", [])
+    hist = {h["id"] for h in history}
     if forced:
         m = meta(forced)
         pick = dict(id=forced, channel=m.get("channel") or m.get("uploader", ""), title=m["title"],
-                    minutes=round(m["duration"] / 60), reason="手動指定", desc=(m.get("description") or "")[:1500])
+                    minutes=round(m["duration"] / 60), reason="手動指定", desc=(m.get("description") or "")[:1500],
+                    channel_url=m.get("channel_url", ""))
         jsave(pick, p); return pick
-    cands = []
+    # (1) 這幾天的大事
+    heads = news_headlines()
+    log(f"  讀到 {len(heads)} 則近 3 天新聞標題")
+    ev = G.gen_json(f"""下面是最近 3 天 AI 與晶片產業的英文新聞標題。
+請整理出最重要的 5 件事（繁體中文，各一句），並寫 4 個英文 YouTube 搜尋關鍵字，用來找「深入討論這些大事的長篇訪談或 podcast」。
+只輸出 JSON：{{"events": ["..."], "queries": ["..."]}}
+標題：
+""" + "\n".join(heads), "整理大事") if heads else {"events": [], "queries": []}
+    # (2) 候選：固定頻道＋依大事搜尋
+    listed = {c["url"].split("/@")[-1].split("/")[0].lower() for c in CFG["channels"]}
+    cands = {}
     for ch in CFG["channels"]:
-        r = ytdlp("--flat-playlist", "-J", "--playlist-end", "6", ch["url"], timeout=300)
-        if r.returncode:
+        es = flat_list(ch["url"], 6)
+        if es is None:
             log("  頻道讀取失敗，略過：", ch["name"]); continue
-        for e in json.loads(r.stdout).get("entries") or []:
-            if e.get("id") in hist or (e.get("duration") or 0) < CFG["min_minutes"] * 60:
-                continue
-            cands.append((ch["name"], e["id"]))
+        for e in es:
+            cands.setdefault(e.get("id"), dict(e, src="固定頻道"))
+    for q in ev.get("queries", [])[:4]:
+        for e in flat_list(f"ytsearchdate15:{q}", 15) or []:
+            cands.setdefault(e.get("id"), dict(e, src="依大事搜尋"))
+    cands = {k: v for k, v in cands.items() if k and k not in hist and (v.get("duration") or 0) >= CFG["min_minutes"] * 60}
     log(f"  符合長度的候選 {len(cands)} 支，讀取詳細資料")
     details = []
-    for name, vid in cands[:30]:
+    for vid, e in list(cands.items())[:40]:
         m = meta(vid)
         if not m or m.get("live_status") in ("is_upcoming", "is_live") or not m.get("upload_date"):
             continue
+        handle = (m.get("uploader_id") or "").lstrip("@").lower()
+        is_listed = handle in listed
+        followers = m.get("channel_follower_count") or 0
+        if not is_listed and followers < CFG.get("min_followers_unlisted", 50000):
+            continue  # 不在清單又太小的頻道不考慮，避免農場內容
         age = (TODAY - datetime.datetime.strptime(m["upload_date"], "%Y%m%d").date()).days
-        details.append(dict(id=vid, channel=name, title=m["title"], minutes=round(m["duration"] / 60),
-                            age_days=age, has_subs=has_en_subs(m), desc=(m.get("description") or "")[:500]))
+        chapters = "；".join(c.get("title", "") for c in (m.get("chapters") or [])[:25])
+        details.append(dict(id=vid, channel=m.get("channel", ""), channel_url=m.get("channel_url", ""), handle=handle,
+                            listed=is_listed, followers=followers, title=m["title"], minutes=round(m["duration"] / 60),
+                            age_days=age, chapters=chapters, desc=(m.get("description") or "")[:1500]))
     pool = []
     for max_age in (CFG["max_age_days"], CFG["fallback_age_days"]):
         pool = [x for x in details if x["age_days"] <= max_age]
@@ -95,15 +139,42 @@ def step_pick(DAY, forced):
             break
     if not pool:
         raise SystemExit("找不到符合條件的新影片（近期都沒有新長片）")
-    listing = "\n".join(f"- id={x['id']}｜{x['channel']}｜{x['title']}｜{x['minutes']} 分鐘｜{x['age_days']} 天前｜簡介：{x['desc'][:300]}" for x in pool)
-    ans = G.gen_json(f"""你在替一位在 Google 帶 Cloud TPU 團隊的台灣工程主管挑今天要看的影片。他想每天透過一支長影片學 AI 與晶片產業的知識。
-從下面候選中挑一支最值得濃縮成 10～15 分鐘繁中解說的：優先 AI、半導體、晶片、資料中心、AI 公司策略與產業趨勢；內容要有實質觀點或資訊，不要純閒聊；同等條件下選較新的。
+    recent = [h for h in history if (TODAY - datetime.date.fromisoformat(h["date"][:10])).days <= 7]
+    listing = "\n".join(
+        f"- id={x['id']}｜{x['channel']}（{'常用頻道' if x['listed'] else '搜尋找到，訂閱 ' + str(x['followers'])}）｜{x['title']}｜{x['minutes']} 分鐘｜{x['age_days']} 天前"
+        f"\n  章節：{x['chapters'][:500] or '無'}\n  簡介：{x['desc'][:400]}" for x in pool)
+    ans = G.gen_json(f"""你在挑今天要濃縮成 12～15 分鐘繁中解說的一支英文長影片。目標：在有限時間內，先聽到最值得聽的內容。
+內容偏好（由高到低）：{CFG.get('preferences', '')}
+這幾天的產業大事：
+{chr(10).join('- ' + e for e in ev.get('events', [])) or '（無資料）'}
+最近 7 天已經做過的影片（同主題要扣分）：
+{chr(10).join('- ' + h['title'] for h in recent) or '（無）'}
+
+請給每支候選 1～5 分：
+- 重要性：是否談到這幾天的大事、或對產業影響大的題目
+- 資訊密度：從章節與簡介判斷，有沒有新資訊、數字、具體觀點，而不是閒聊或宣傳
+- 來賓份量：公司執行長、創辦人、研究者等第一手說法較高；一般評論較低
+- 新鮮度：跟最近 7 天做過的主題重複就低
+- 偏好：符合上面內容偏好的程度
+total＝重要性×2＋資訊密度×2＋偏好×2＋來賓份量＋新鮮度。
 候選：
 {listing}
-只輸出 JSON：{{"id": "影片 id", "reason": "一句繁體中文理由"}}""", "挑片")
-    x = next((c for c in pool if c["id"] == ans.get("id")), pool[0])
-    pick = dict(id=x["id"], channel=x["channel"], title=x["title"], minutes=x["minutes"], reason=ans.get("reason", ""),
-                desc=(meta(x["id"]) or {}).get("description", "")[:1500])
+只輸出 JSON：{{"ranking": [{{"id": "...", "scores": {{"重要性": n, "資訊密度": n, "來賓份量": n, "新鮮度": n, "偏好": n}}, "total": n, "reason": "一句繁體中文理由"}}]}}，依 total 由高到低，最多 5 支。""", "挑片打分", temperature=0.3)
+    byid = {x["id"]: x for x in pool}
+    ranking = [r | {"title": byid[r["id"]]["title"], "channel": byid[r["id"]]["channel"], "minutes": byid[r["id"]]["minutes"]}
+               for r in ans.get("ranking", []) if r.get("id") in byid]
+    if not ranking:
+        ranking = [dict(id=pool[0]["id"], total=0, reason="打分失敗，取最新一支", title=pool[0]["title"],
+                        channel=pool[0]["channel"], minutes=pool[0]["minutes"])]
+    x = byid[ranking[0]["id"]]
+    pick = dict(id=x["id"], channel=x["channel"], channel_url=x["channel_url"], handle=x["handle"], listed=x["listed"],
+                title=x["title"], minutes=x["minutes"], reason=ranking[0].get("reason", ""), desc=x["desc"],
+                events=ev.get("events", []), ranking=ranking[:3])
+    md = ["# 今日選片", "", "## 這幾天的大事"] + [f"- {e}" for e in pick["events"]] + ["", "## 前三名"]
+    for i, r in enumerate(ranking[:3], 1):
+        md.append(f"{i}. {r['title']}（{r['channel']}，{r['minutes']} 分鐘）總分 {r.get('total')}：{r.get('reason', '')}")
+        md.append(f"   https://www.youtube.com/watch?v={r['id']}　加做這支：bash ~/claude-ai-video-summary/daily/daily.sh --extra {r['id']}")
+    open(f"{DAY}/選片.md", "w", encoding="utf-8").write("\n".join(md) + "\n")
     jsave(pick, p); return pick
 
 
@@ -173,13 +244,13 @@ def step_plan(DAY, pick, words):
     if os.path.exists(p):
         return jload(p)
     total = words[-1][2]
-    prompt = f"""你要把一支英文長影片濃縮成一支 {CFG['target_minutes']} 分鐘的繁體中文解說影片，給一位想學 AI 與晶片產業知識的台灣工程主管看。
+    prompt = f"""你要把一支英文長影片濃縮成一支 {CFG['target_minutes']} 分鐘的繁體中文解說影片，用來學 AI 與晶片產業知識。
 影片：{pick['channel']}｜{pick['title']}｜全長 {mmss(total)}
 影片簡介（人名、公司名拼法以這裡為準；逐字稿是機器聽寫，人名可能拼錯）：{pick.get('desc', '')[:1200]}
 數字與事實只能來自逐字稿，聽不清楚的數字寧可不提，不要自己補。
 
 成片結構（照順序）：
-1. intro：開場旁白 3～5 句（不要提到觀眾是誰）。說這是哪個節目、誰在談、這集最重要的結論是什麼、為什麼值得看，最後一句引導「先看三個最精彩的片段，後面完整整理時你會再看到它們的來龍去脈」。
+1. intro：開場旁白 3～5 句（不要提到觀眾是誰、不要說「適合誰看」）。說這是哪個節目、誰在談、這集最重要的結論是什麼、為什麼值得看，最後一句引導「先看三個最精彩的片段，後面完整整理時你會再看到它們的來龍去脈」。
 2. highlights：全片最精彩、最有觀點或最有資訊量的 3 個片段（每段 10～25 秒），照原片時間先後排。
 3. bridge：1～2 句，引導「接下來照時間順序，完整整理這一集」。
 4. chapters：照原片時間順序，把整集分成 7～10 段，涵蓋全片主要內容，不要只挑精華。每段有：
@@ -490,10 +561,20 @@ def step_deliver(DAY, pick, plan, final):
         os.makedirs(dest, exist_ok=True)
         shutil.copy2(final, dest); copied = "，已複製到 iCloud 雲碟"
     hist = jload(f"{D}/history.json", [])
-    hist.append(dict(id=pick["id"], date=TODAY.isoformat(), title=pick["title"], video=os.path.basename(final)))
+    hist.append(dict(id=pick["id"], date=TODAY.isoformat(), title=pick["title"], channel=pick["channel"],
+                     handle=pick.get("handle", ""), video=os.path.basename(final)))
     jsave(hist, f"{D}/history.json")
-    msg = f"{plan.get('title_zh', pick['title'])}（{pick['channel']}）{copied}"
-    subprocess.run(["osascript", "-e", f'display notification "{msg[:180]}" with title "AI 晶片日報已完成"'])
+    # 頻道清單自動學習：不在清單的頻道，30 天內被選中 2 次就加進常用清單
+    h = pick.get("handle")
+    if h and not pick.get("listed"):
+        n = sum(1 for x in hist if x.get("handle") == h and (TODAY - datetime.date.fromisoformat(x["date"][:10])).days <= 30)
+        if n >= 2:
+            cfg = jload(f"{D}/config.json")
+            cfg["channels"].append({"name": pick["channel"], "url": f"https://www.youtube.com/@{h}/videos", "added": f"{TODAY} 自動加入"})
+            jsave(cfg, f"{D}/config.json"); log("  頻道自動加入常用清單：", pick["channel"])
+    others = "；".join(f"{i}. {r['title'][:28]}" for i, r in enumerate(pick.get("ranking", [])[1:3], 2))
+    msg = f"{plan.get('title_zh', pick['title'])}（{pick['channel']}）{copied}" + (f"。其他候選：{others}" if others else "")
+    subprocess.run(["osascript", "-e", f'display notification "{msg[:230].replace(chr(34), "")}" with title "AI 晶片日報已完成"'])
     # 原片只留最近幾天
     for old in sorted(glob.glob(f"{D}/days/*/src.mp4")):
         day = os.path.basename(os.path.dirname(old))
@@ -508,11 +589,14 @@ def step_deliver(DAY, pick, plan, final):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--video"); ap.add_argument("--day")
+    ap.add_argument("--extra", help="加做指定影片（不影響當天主影片）")
     a = ap.parse_args()
     global TODAY
     if a.day:
         TODAY = datetime.date.fromisoformat(a.day)
-    DAY = f"{D}/days/{TODAY.isoformat()}"; os.makedirs(DAY, exist_ok=True)
+    if a.extra:
+        a.video = a.extra
+    DAY = f"{D}/days/{TODAY.isoformat()}" + (f"_{a.extra}" if a.extra else ""); os.makedirs(DAY, exist_ok=True)
     if os.path.exists(f"{DAY}/DONE"):
         log("今天已經做好了：", open(f"{DAY}/DONE").read()); return
     log("== AI 晶片日報", TODAY)
