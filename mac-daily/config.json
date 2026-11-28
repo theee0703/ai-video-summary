@@ -1,0 +1,22 @@
+{
+ "說明": "頻道清單可以自己增減；min_minutes＝只挑超過幾分鐘的影片；max_age_days＝優先挑幾天內的新片，找不到再放寬到 fallback_age_days。",
+ "channels": [
+  {"name": "All-In Podcast", "url": "https://www.youtube.com/@allin/videos"},
+  {"name": "Dwarkesh Podcast", "url": "https://www.youtube.com/@DwarkeshPatel/videos"},
+  {"name": "BG2 Pod", "url": "https://www.youtube.com/@Bg2Pod/videos"},
+  {"name": "No Priors", "url": "https://www.youtube.com/@NoPriorsPodcast/videos"},
+  {"name": "Latent Space", "url": "https://www.youtube.com/@LatentSpacePod/videos"},
+  {"name": "Lex Fridman", "url": "https://www.youtube.com/@lexfridman/videos"},
+  {"name": "Acquired", "url": "https://www.youtube.com/@AcquiredFM/videos"},
+  {"name": "a16z", "url": "https://www.youtube.com/@a16z/videos"},
+  {"name": "Sequoia Capital", "url": "https://www.youtube.com/@sequoiacapital/videos"},
+  {"name": "20VC", "url": "https://www.youtube.com/@20VC/videos"},
+  {"name": "Moonshots", "url": "https://www.youtube.com/@peterdiamandis/videos"}
+ ],
+ "min_minutes": 35,
+ "max_age_days": 4,
+ "fallback_age_days": 10,
+ "target_minutes": "12～15",
+ "copy_to": "~/Library/Mobile Documents/com~apple~CloudDocs/AI晶片日報",
+ "keep_sources_days": 7
+}
